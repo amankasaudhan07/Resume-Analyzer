@@ -1,4 +1,3 @@
-
 const express = require("express");
 const multer = require("multer");
 const pdfParse = require("pdf-parse");
@@ -8,7 +7,7 @@ const nlp = require("compromise");
 const WordPOS = require("wordpos");
 const wordpos = new WordPOS();
 const cors = require('cors');
-const fs=require('fs')
+const fs = require('fs');
 
 const app = express();
 app.use(express.json());
@@ -38,6 +37,24 @@ const Analysis = mongoose.model("Analysis", AnalysisSchema);
 // File upload setup
 const upload = multer({ dest: "uploads/" });
 
+// List of unnecessary keywords to filter
+const stopWords = [
+  'looking', 'seeking', 'implement', 'various', 'using', 'working', 'experience',
+  'year', 'years', 'month', 'months', 'responsible', 'duty', 'duties', 'work',
+  'ability', 'skills', 'proficient', 'proficiency', 'knowledge', 'understanding',
+  'expert', 'familiar', 'demonstrated', 'proven', 'strong', 'excellent', 'outstanding',
+  'capable', 'capability', 'competent', 'competency', 'effective', 'efficient', 'successfully',
+  'performed', 'completed', 'handled', 'achieved', 'accomplished', 'background', 'record', 'history',
+  'goal', 'goals', 'objectives', 'objective', 'results', 'result', 'performed', 'highly', 'extensive',
+  'solid', 'considerable', 'ability', 'responsibilities', 'task', 'tasks', 'job', 'jobs', 'position',
+  'positions', 'profile', 'proven track', 'track record', 'participated', 'involved', 'participation',
+  'knowledgeable', 'thorough', 'detailed', 'successful', 'strongly', 'passion', 'passionate', 'interest',
+  'interests', 'driven', 'dedicated', 'commitment', 'committed', 'integrity', 'values', 'ethics',
+  'attitude', 'approach', 'enthusiasm', 'enthusiastic', 'goal-oriented', 'results-oriented', 'outcome',
+  'mindset', 'attitude', 'determination', 'focused', 'self-motivated', 'independently', 'individual',
+  'adaptable', 'adaptability', 'flexible', 'flexibility', 'willing', 'eager', 'enthusiasm', 'capable'
+];
+
 // Helper function: Extract keywords from text with improved filtering
 async function extractKeywords(text) {
   const tfidf = new TfIdf();
@@ -50,15 +67,17 @@ async function extractKeywords(text) {
     .concat(doc.adjectives())
     .out('array');
 
-  // Lemmatize words using wordpos
+  // Lemmatize words using wordpos and filter out stop words
   const lemmatizedWords = await Promise.all(
     relevantWords.map(async (word) => {
       const lemma = await wordpos.lookup(word);
-      return lemma.length ? lemma[0].lemma : word;
+      const baseForm = lemma.length ? lemma[0].lemma : word;
+      return stopWords.includes(baseForm.toLowerCase()) ? null : baseForm;
     })
   );
 
-  tfidf.addDocument(lemmatizedWords.join(" "));
+  // Add non-null words to the TfIdf model
+  tfidf.addDocument(lemmatizedWords.filter(word => word).join(" "));
 
   const terms = [];
   tfidf.listTerms(0).forEach((item) => {
@@ -71,7 +90,7 @@ async function extractKeywords(text) {
 // Route: Analyze resume based on job description
 app.post("/analyze", upload.single("resume"), async (req, res) => {
   const jobDescription = req.body.jobDescription;
-  // console.log(jobDescription);
+
   try {
     if (!req.file) {
       return res.status(400).json({ message: "No file uploaded" });
@@ -112,8 +131,8 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
           : "Your resume matches well with the job description.",
     });
 
-     // Delete the uploaded file after processing
-     fs.unlink(req.file.path, (err) => {
+    // Delete the uploaded file after processing
+    fs.unlink(req.file.path, (err) => {
       if (err) console.error("Error deleting file:", err);
     });
   } catch (error) {
@@ -125,5 +144,3 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
-
-
