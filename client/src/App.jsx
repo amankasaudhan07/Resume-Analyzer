@@ -14,7 +14,7 @@ function App() {
     formData.append('jobDescription', jobDescription);
 
     try {
-      const response = await axios.post('http://localhost:3000/analyze', formData, {
+      const response = await axios.post('https://resume-analyzer-e14h.onrender.com/analyze', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       
