@@ -5,6 +5,7 @@ function App() {
   const [jobDescription, setJobDescription] = useState('');
   const [resumeFile, setResumeFile] = useState(null);
   const [result, setResult] = useState(null);
+  const [loading, setLoading] = useState(false); 
 
   const handleFileChange = (e) => setResumeFile(e.target.files[0]);
 
@@ -12,6 +13,8 @@ function App() {
     const formData = new FormData();
     formData.append('resume', resumeFile);
     formData.append('jobDescription', jobDescription);
+     
+    setLoading(true);
 
     try {
       const response = await axios.post('https://resume-analyzer-e14h.onrender.com/analyze', formData, {
@@ -22,6 +25,8 @@ function App() {
 
     } catch (error) {
       console.error("Error analyzing resume:", error);
+    }finally {
+      setLoading(false); // Set loading to false when request completes
     }
   };
 
@@ -54,16 +59,28 @@ function App() {
         </button>
       </div>
 
-      {result && (
+      {loading ? (
+        <div className="bg-gray-800 p-6 rounded-lg shadow-lg mt-6 md:mt-0 md:ml-6 w-full max-w-md md:w-1/3">
+          <h2 className="text-xl font-bold">Analyzing...</h2>
+          <p>Please wait while we analyze your resume.</p>
+        </div>
+      ) : result && (
         <div className="bg-gray-800 p-6 rounded-lg shadow-lg mt-6 md:mt-0 md:ml-6 w-full max-w-md md:w-1/3">
           <h2 className="text-xl font-bold mb-2">Analysis Result</h2>
           <p>Match Score: {result.matchScore}%</p>
+          
+         {   result.missingSkills.length > 0 && (
+          <>
           <p className="mt-2">Missing Skills:</p>
           <ul className="list-disc list-inside">
             {result.missingSkills.map((skill, index) => (
               <li key={index}>{skill}</li>
             ))}
           </ul>
+            </>
+
+        ) }
+          
           <p className="mt-4 font-semibold">{result.suggestion}</p>
         </div>
       )}
